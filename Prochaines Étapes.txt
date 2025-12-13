@@ -1,0 +1,20 @@
+  Prochaines Étapes
+
+  Pour commencer le développement :
+
+  1. Créer l'environnement virtuel :
+  python -m venv venv
+  venv\Scripts\activate
+  2. Installer les dépendances :
+  pip install -r requirements.txt
+  3. Configurer l'environnement :
+  copy .env.example .env
+
+  Que voulez-vous développer en premier ?
+
+  1. Le crawler (pour parcourir et extraire des pages web)
+  2. L'indexeur (pour stocker et organiser les données)
+  3. Le moteur de recherche (pour rechercher dans l'index)
+  4. L'interface web (pour interagir avec le système)
+
+  Je recommande de commencer par le crawler, qu'en pensez-vous ?

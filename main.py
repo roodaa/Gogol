@@ -19,6 +19,16 @@ def main():
         "--query",
         help="Requête de recherche (pour la commande search)"
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force la reconstruction complète de l'index (pour la commande index)"
+    )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Afficher les statistiques de l'index (pour la commande index)"
+    )
 
     args = parser.parse_args()
 
@@ -40,10 +50,34 @@ def main():
         print("="*50)
 
     elif args.command == "index":
-        print("Module indexer - À implémenter")
-        # from src.indexer import Indexer
-        # indexer = Indexer()
-        # indexer.build_index()
+        from src.indexer import Indexer
+
+        indexer = Indexer()
+
+        # Si --stats uniquement, afficher les statistiques
+        if args.stats and not args.force:
+            stats = indexer.get_stats()
+            print("\n" + "="*50)
+            print("STATISTIQUES DE L'INDEX")
+            print("="*50)
+            print(f"Documents indexés: {stats['docs_indexed']}")
+            print(f"Termes uniques: {stats['unique_terms']}")
+            print(f"Postings créés: {stats['postings']}")
+            print(f"Taille de la base: {stats['db_size']}")
+            print("="*50)
+        else:
+            # Lancer l'indexation
+            force = args.force
+            stats = indexer.build_index(force_rebuild=force)
+
+            print("\n" + "="*50)
+            print("INDEXATION TERMINÉE")
+            print("="*50)
+            print(f"Documents indexés: {stats['docs_indexed']}")
+            print(f"Termes uniques: {stats['unique_terms']}")
+            print(f"Postings créés: {stats['postings']}")
+            print(f"Taille de la base: {stats['db_size']}")
+            print("="*50)
 
     elif args.command == "search":
         print("Module search - À implémenter")

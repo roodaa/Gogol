@@ -159,85 +159,6 @@ class Crawler:
             self.logger.error(f"Erreur lors du fetch de {url}: {e}")
             return None
 
-    def _is_wikipedia_url(self, url: str) -> bool:
-        """
-        Vérifie si l'URL est une page Wikipedia.
-        
-        Args:
-            url: URL à vérifier
-        
-        Returns:
-            True si c'est une page Wikipedia
-        """
-        parsed = urlparse(url)
-        return 'wikipedia.org' in parsed.netloc
-
-    def _extract_wikipedia_content(self, soup: BeautifulSoup) -> str:
-        """
-        Extrait UNIQUEMENT le contenu principal d'une page Wikipedia.
-        
-        Évite d'indexer les éléments communs à toutes les pages:
-        - Menu de navigation
-        - Header
-        - Footer
-        - Sidebar
-        
-        Args:
-            soup: BeautifulSoup object de la page Wikipedia
-        
-        Returns:
-            Texte du contenu principal uniquement
-        """
-        # Stratégie 1: Chercher le contenu principal (div#mw-content-text)
-        main_content = soup.find('div', id='mw-content-text')
-        
-        # Stratégie 2: Si pas trouvé, chercher bodyContent
-        if not main_content:
-            main_content = soup.find('div', id='bodyContent')
-        
-        # Stratégie 3: Si toujours pas trouvé, chercher div#content
-        if not main_content:
-            main_content = soup.find('div', id='content')
-        
-        # Fallback
-        if not main_content:
-            self.logger.warning("Structure Wikipedia non reconnue, extraction complète")
-            main_content = soup
-        
-        # Éléments à supprimer
-        elements_to_remove = [
-            'script', 'style', 'noscript',
-            '.navbox', '.infobox', '.ambox',
-            '.mw-editsection', '#toc', '.reflist',
-            '.mw-references-wrap', '#coordinates',
-            '.metadata', '.sistersitebox', '.noprint',
-        ]
-        
-        # Créer une copie
-        content_copy = BeautifulSoup(str(main_content), 'lxml')
-        
-        # Supprimer les éléments indésirables
-        for selector in elements_to_remove:
-            if not selector.startswith(('.', '#')):
-                for element in content_copy.find_all(selector):
-                    element.decompose()
-            elif selector.startswith('.'):
-                for element in content_copy.find_all(class_=selector[1:]):
-                    element.decompose()
-            else:
-                element = content_copy.find(id=selector[1:])
-                if element:
-                    element.decompose()
-        
-        # Extraire le texte
-        text = content_copy.get_text(separator=' ', strip=True)
-        
-        # Nettoyer les espaces multiples
-        import re
-        text = re.sub(r'\s+', ' ', text)
-        
-        return text.strip()
-
     def _parse_page(self, response: requests.Response, url: str) -> Dict:
         """
         Parse le HTML et extrait les informations importantes.
@@ -263,20 +184,12 @@ class Crawler:
         # Extraire le titre
         title = soup.title.string if soup.title else "Sans titre"
 
-        # ⚠️ MODIFICATION: Extraction intelligente selon le type de site
-        if self._is_wikipedia_url(url):
-            # Wikipedia: extraire UNIQUEMENT le contenu principal
-            self.logger.debug(f"Page Wikipedia détectée: extraction du contenu principal")
-            text = self._extract_wikipedia_content(soup)
-        else:
-            # Autre site: comportement normal
-            self.logger.debug(f"Site standard: extraction complète")
-            
-            # Supprimer scripts et styles
-            for script in soup(["script", "style"]):
-                script.decompose()
-            
-            text = soup.get_text(separator=' ', strip=True)
+        # Extraire le texte (en enlevant les scripts et styles)
+        # get_text() extrait tout le texte visible de la page
+        for script in soup(["script", "style"]):
+            script.decompose()  # Retirer ces éléments
+
+        text = soup.get_text(separator=' ', strip=True)
 
         # Extraire tous les liens
         links = []

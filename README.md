@@ -32,8 +32,9 @@ gogol/
 ### Version 1.0 - Moteur de Recherche Basique
 - [x] Crawler simple pour fichiers HTML (101 pages Wikipedia FR crawlées)
 - [x] Indexation par mots-clés (inverted index avec TF-IDF)
-- [ ] Recherche basique par correspondance de termes
-- [ ] Interface web minimaliste
+- [x] Recherche basique par correspondance de termes avec ranking TF-IDF
+- [x] API REST FastAPI avec endpoints de recherche
+- [x] Interface web moderne Angular avec sidebar et statistiques
 
 ### Version 2.0 - Améliorations
 - [ ] Crawling de pages web réelles
@@ -73,14 +74,29 @@ pip install -r requirements.txt
 Crawler des pages web à partir d'une URL de départ :
 
 ```bash
+# Crawler avec le nombre de pages par défaut (100 pages)
 python main.py crawl --url https://fr.wikipedia.org/wiki/France
+
+# Crawler un nombre spécifique de pages (ex: 50 pages)
+python main.py crawl --url https://fr.wikipedia.org/wiki/Python --max-pages 50
+
+# Crawler 200 pages
+python main.py crawl --url https://fr.wikipedia.org/wiki/Intelligence_artificielle --max-pages 200
 ```
+
+**Options disponibles** :
+- `--url` (obligatoire) : URL de départ pour le crawling
+- `--max-pages` (optionnel) : Nombre maximum de pages à crawler (défaut: 100)
 
 Le crawler :
 - Télécharge les pages HTML
 - Extrait le contenu textuel et les liens
 - Sauvegarde les données en JSON dans `data/raw/`
 - Respecte un délai entre les requêtes (politesse)
+- Reste sur le même domaine (ex: wikipedia.org)
+- Ignore les fichiers non-HTML (PDF, images, etc.)
+- **Normalise les URLs** : ignore les fragments (partie après `#`) pour éviter de crawler plusieurs fois la même page
+  - Exemple : `https://fr.wikipedia.org/wiki/France#Démographie` est traité comme `https://fr.wikipedia.org/wiki/France`
 
 **Données actuelles** : 101 pages Wikipedia FR (~66 MB)
 
@@ -182,18 +198,59 @@ Texte original : "Les châteaux de la Loire sont magnifiques"
 python main.py search --query "châteaux de la Loire"
 ```
 
-### 4. Interface web (à venir)
+### 4. API FastAPI
+
+Lancer l'API REST pour le moteur de recherche :
 
 ```bash
-python main.py web
+python run_api.py
 ```
 
-Démarrera l'interface web sur http://127.0.0.1:8000
+L'API sera disponible sur :
+- **URL principale** : http://127.0.0.1:8000
+- **Documentation Swagger** : http://127.0.0.1:8000/api/docs
+- **Documentation ReDoc** : http://127.0.0.1:8000/api/redoc
+
+**Endpoints disponibles** :
+- `GET /api/search?q=requete&limit=10` - Effectuer une recherche
+- `GET /api/stats` - Statistiques de l'index
+- `GET /api/health` - Vérifier le statut de l'API
+
+### 5. Interface Web Angular
+
+Lancer l'interface web moderne avec sidebar :
+
+```bash
+cd frontend
+npm install  # Première fois uniquement
+npm start
+```
+
+L'interface web sera disponible sur http://localhost:4200
+
+**Fonctionnalités de l'interface** :
+- ✨ **Design moderne** avec sidebar et gradient violet
+- 📊 **Statistiques en temps réel** (documents, termes, postings, taille DB)
+- 🎯 **Barre de recherche intuitive** avec bouton de recherche
+- 📈 **Pourcentage de cohérence** affiché pour chaque résultat
+- 🔍 **Termes traités** (après stemming) affichés sous forme de chips
+- 🎨 **Cartes de résultats** avec effet hover et animations
+- 📱 **Responsive design** pour mobile et desktop
+- 💫 **Loader animé** pendant la recherche
+- ✅ **Statut de l'API** en temps réel dans la sidebar
+
+**Architecture frontend** :
+- Angular 21 (standalone components)
+- Signals pour la réactivité
+- HttpClient pour les appels API
+- Design CSS personnalisé (gradient violet moderne)
 
 ## Technologies
 
+### Backend
 - **Python 3.14** - Langage principal
-- **FastAPI** - Framework web (à venir)
+- **FastAPI** - Framework web API REST
+- **Uvicorn** - Serveur ASGI
 - **BeautifulSoup** - Parsing HTML pour le crawler
 - **SQLAlchemy** - ORM pour la base de données SQLite
 - **NLTK** - Traitement du langage naturel français
@@ -201,6 +258,13 @@ Démarrera l'interface web sur http://127.0.0.1:8000
   - Stop words français (157 mots)
   - Tokenisation `word_tokenize`
 - **SQLite** - Base de données de l'index inversé
+
+### Frontend
+- **Angular 21** - Framework JavaScript moderne
+- **TypeScript** - Langage typé pour le développement
+- **RxJS** - Programmation réactive
+- **Standalone Components** - Architecture Angular moderne sans modules
+- **Signals** - Gestion d'état réactive
 
 ## Architecture de l'Indexeur
 

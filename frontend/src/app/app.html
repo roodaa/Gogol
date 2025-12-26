@@ -1,0 +1,178 @@
+<div class="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🔍</span>
+        <h1>{{ title() }}</h1>
+      </div>
+      <p class="tagline">Moteur de recherche éducatif</p>
+    </div>
+
+    <!-- Statut de l'API -->
+    <div class="sidebar-section">
+      <h2>Statut</h2>
+      @if (healthStatus()) {
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">API</span>
+            <span class="status-badge" [class.healthy]="healthStatus()!.status === 'healthy'" [class.unhealthy]="healthStatus()!.status !== 'healthy'">
+              {{ healthStatus()!.status === 'healthy' ? 'En ligne' : 'Hors ligne' }}
+            </span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Index</span>
+            <span class="status-value">{{ healthStatus()!.index_ready ? '✓' : '✗' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Statistiques -->
+    @if (stats()) {
+      <div class="sidebar-section">
+        <h2>Statistiques</h2>
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-label">Documents</span>
+            <span class="status-value">{{ stats()!.total_documents }}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Termes</span>
+            <span class="status-value">{{ stats()!.total_terms }}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Postings</span>
+            <span class="status-value">{{ stats()!.total_postings }}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Taille DB</span>
+            <span class="status-value">{{ stats()!.db_size_mb.toFixed(2) }} MB</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Message d'information -->
+    @if (healthStatus() && !healthStatus()!.index_ready) {
+      <div class="sidebar-section">
+        <div class="status-card">
+          <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">
+            {{ healthStatus()!.message }}
+          </p>
+        </div>
+      </div>
+    }
+  </aside>
+
+  <!-- Contenu principal -->
+  <main class="main-content">
+    <!-- En-tête de recherche -->
+    <div class="search-header">
+      <div class="search-container">
+        <form class="search-box" (ngSubmit)="onSearch()">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Entrez votre recherche..."
+            [(ngModel)]="query"
+            name="query"
+            [disabled]="isLoading()"
+          />
+          <button
+            type="submit"
+            class="search-button"
+            [disabled]="isLoading() || !query().trim()"
+          >
+            {{ isLoading() ? 'Recherche...' : 'Rechercher' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Zone de résultats -->
+    <div class="results-container">
+      <div class="results-content">
+        <!-- Message d'erreur -->
+        @if (errorMessage()) {
+          <div class="error-message">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <!-- Loader -->
+        @if (isLoading()) {
+          <div class="loader">
+            <div class="spinner"></div>
+          </div>
+        }
+
+        <!-- Résultats -->
+        @if (!isLoading() && searchResults()) {
+          <!-- Informations sur la recherche -->
+          <div class="search-info">
+            <div class="search-info-header">
+              <h3>Résultats de recherche</h3>
+              <span class="result-count">{{ searchResults()!.total_results }} résultat(s)</span>
+            </div>
+            @if (searchResults()!.processed_terms.length > 0) {
+              <div>
+                <p style="margin: 0 0 0.5rem 0; font-size: 0.875rem; color: #6b7280;">
+                  Termes traités :
+                </p>
+                <div class="processed-terms">
+                  @for (term of searchResults()!.processed_terms; track term) {
+                    <span class="term-chip">{{ term }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Liste des résultats -->
+          @if (searchResults()!.results.length > 0) {
+            <div class="results-list">
+              @for (result of searchResults()!.results; track result.doc_id) {
+                <a [href]="result.url" target="_blank" rel="noopener noreferrer" class="result-card">
+                  <div class="result-header">
+                    <h3 class="result-title">{{ result.title }}</h3>
+                    <div class="result-score">
+                      <span class="score-label">Cohérence</span>
+                      <span class="score-value">{{ formatScore(result.score) }}</span>
+                    </div>
+                  </div>
+                  <div class="result-url">{{ result.url }}</div>
+                  <div class="result-meta">
+                    <span class="meta-item">
+                      📄 Document #{{ result.doc_id }}
+                    </span>
+                    <span class="meta-item">
+                      📊 Score: {{ result.score.toFixed(4) }}
+                    </span>
+                  </div>
+                </a>
+              }
+            </div>
+          } @else {
+            <div class="message">
+              <div class="message-icon">🔍</div>
+              <h2>Aucun résultat trouvé</h2>
+              <p>Essayez avec d'autres mots-clés</p>
+            </div>
+          }
+        }
+
+        <!-- Message de bienvenue -->
+        @if (!isLoading() && !searchResults() && !errorMessage()) {
+          <div class="message">
+            <div class="message-icon">👋</div>
+            <h2>Bienvenue sur Gogol</h2>
+            <p>Commencez par effectuer une recherche ci-dessus</p>
+          </div>
+        }
+      </div>
+    </div>
+  </main>
+</div>
+
+<router-outlet />

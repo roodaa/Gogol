@@ -86,6 +86,25 @@ class Crawler:
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
 
+    def _normalize_url(self, url: str) -> str:
+        """
+        Normalise une URL en supprimant le fragment (partie après #).
+
+        Args:
+            url: L'URL à normaliser
+
+        Returns:
+            L'URL sans fragment
+
+        Explication:
+            Les fragments (#section) sont uniquement côté client et ne changent
+            pas la page servie. https://example.com/page et
+            https://example.com/page#section sont la même page.
+        """
+        parsed = urlparse(url)
+        # Reconstruire l'URL sans le fragment
+        return parsed._replace(fragment='').geturl()
+
     def _is_valid_url(self, url: str, base_domain: str) -> bool:
         """
         Vérifie si une URL est valide et appartient au même domaine.
@@ -348,6 +367,9 @@ class Crawler:
             - On visite d'abord toutes les pages à distance 1
             - Puis toutes celles à distance 2, etc.
         """
+        # Normaliser l'URL de départ
+        start_url = self._normalize_url(start_url)
+
         # Extraire le domaine de base pour rester sur le même site
         base_domain = urlparse(start_url).netloc
 
@@ -363,20 +385,24 @@ class Crawler:
             # Prendre la première URL de la file (FIFO)
             current_url = self.urls_to_visit.pop(0)
 
+            # Normaliser l'URL (supprimer le fragment #)
+            normalized_url = self._normalize_url(current_url)
+
             # Skip si déjà visitée
-            if current_url in self.visited_urls:
+            if normalized_url in self.visited_urls:
+                self.logger.debug(f"URL déjà visitée (normalisée): {normalized_url}")
                 continue
 
-            # Marquer comme visitée
-            self.visited_urls.add(current_url)
+            # Marquer comme visitée (version normalisée)
+            self.visited_urls.add(normalized_url)
 
-            # Télécharger la page
-            response = self._fetch_page(current_url)
+            # Télécharger la page (avec l'URL normalisée, car le fragment est ignoré par le serveur)
+            response = self._fetch_page(normalized_url)
             if response is None:
                 continue
 
             # Parser la page
-            page_data = self._parse_page(response, current_url)
+            page_data = self._parse_page(response, normalized_url)
 
             # Sauvegarder les données
             self._save_page(page_data)
@@ -387,10 +413,11 @@ class Crawler:
 
             # Ajouter les nouveaux liens à la file
             for link in page_data['links']:
-                if (link not in self.visited_urls and
-                    link not in self.urls_to_visit and
-                    self._is_valid_url(link, base_domain)):
-                    self.urls_to_visit.append(link)
+                normalized_link = self._normalize_url(link)
+                if (normalized_link not in self.visited_urls and
+                    normalized_link not in self.urls_to_visit and
+                    self._is_valid_url(normalized_link, base_domain)):
+                    self.urls_to_visit.append(normalized_link)
 
             # Respecter le délai entre requêtes (politesse + éviter le rate limiting)
             if self.urls_to_visit:  # Pas de délai après la dernière page
